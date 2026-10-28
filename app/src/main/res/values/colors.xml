@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="farsh_gold">#D4AF37</color>
+    <color name="farsh_red">#8B1E22</color>
+    <color name="farsh_ink">#12100E</color>
+    <color name="farsh_velvet">#1C1815</color>
+    <color name="farsh_surface">#25201C</color>
+    <color name="farsh_cream">#F5EBE1</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+</resources>
