@@ -11,7 +11,6 @@ import com.example.model.QuotaUsage
 import com.example.model.StarUpgradeCalculator
 import com.example.model.VerificationLevel
 import com.example.service.AccountAndMarketplaceRepository
-import com.example.service.RajEstimationServiceImpl
 import com.example.ui.viewmodel.CarpetViewModel
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -164,16 +163,9 @@ class ExampleRobolectricTest {
   }
 
   @Test
-  fun `verify smart raj counter service contract behavior`() = runBlocking {
-    val service = RajEstimationServiceImpl()
-    val testBitmap = android.graphics.Bitmap.createBitmap(400, 400, android.graphics.Bitmap.Config.ARGB_8888)
-    val quality = service.evaluateImageQuality(testBitmap)
-    assertNotNull(quality)
-
-    val result = service.analyzeRaj(com.example.model.RajAnalysisRequest(imageBitmap = testBitmap))
-    assertNotNull(result)
-    // When backend engine is not connected, measuredRaj must be null (never fake or fabricated)
-    assertNull("Estimated raj count must be null and not fabricated without vision engine", result.measuredRaj)
-    assertNotNull("Status message must explain service state", result.engineDiagnosticMessage)
+  fun `verify farshbazaar 14 principles and mother quote contract`() {
+    val quote = ir.farshbazaar.domain.Principles.MOTHER_PRINCIPLE_FA
+    assertTrue(quote.contains("ما فرش را با چشم و دست می‌شناسیم"))
+    assertEquals(14, ir.farshbazaar.domain.Principles.ALL.size)
   }
 }

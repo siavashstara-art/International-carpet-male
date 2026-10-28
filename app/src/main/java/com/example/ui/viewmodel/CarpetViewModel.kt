@@ -76,8 +76,6 @@ class CarpetViewModel : ViewModel() {
     private val _showingCreateClassifiedDialog = MutableStateFlow(false)
     val showingCreateClassifiedDialog: StateFlow<Boolean> = _showingCreateClassifiedDialog.asStateFlow()
 
-    private val _showingRajCounterScreen = MutableStateFlow(false)
-    val showingRajCounterScreen: StateFlow<Boolean> = _showingRajCounterScreen.asStateFlow()
 
     private val _showingStoryMakerScreen = MutableStateFlow(false)
     val showingStoryMakerScreen: StateFlow<Boolean> = _showingStoryMakerScreen.asStateFlow()
@@ -221,13 +219,6 @@ class CarpetViewModel : ViewModel() {
         _showingCreateClassifiedDialog.value = false
     }
 
-    fun openRajCounter() {
-        _showingRajCounterScreen.value = true
-    }
-
-    fun closeRajCounter() {
-        _showingRajCounterScreen.value = false
-    }
 
     fun openStoryMaker() {
         _showingStoryMakerScreen.value = true

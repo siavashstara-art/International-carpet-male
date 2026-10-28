@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,7 +30,8 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onAbout: () -> Unit,
     onPrinciples: () -> Unit,
-    onEducation: () -> Unit
+    onEducation: () -> Unit,
+    onKnotGuide: () -> Unit = {}
 ) {
     var selectedLanguage by remember { mutableStateOf("فارسی (پیش‌فرض)") }
 
@@ -126,6 +128,15 @@ fun SettingsScreen(
                     title = "اصول ۱۴گانهٔ اخلاقی فرشبازار",
                     subtitle = "نفی نگاه سمساری، اظهار نظر مشروط بر تصویر و صداقت در ارزیابی",
                     onClick = onPrinciples
+                )
+            }
+
+            item {
+                SettingsNavigationItem(
+                    icon = Icons.Default.Straighten,
+                    title = "راهنمای رجشمار قالی",
+                    subtitle = "آموزش گام‌به‌گام سنجش دستی رج در مقیاس ۷ سانتی‌متر",
+                    onClick = onKnotGuide
                 )
             }
 

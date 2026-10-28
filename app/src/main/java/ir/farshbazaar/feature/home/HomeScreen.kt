@@ -41,7 +41,8 @@ fun HomeScreen(
     onPrinciples: () -> Unit,
     onEducation: () -> Unit,
     onAbout: () -> Unit,
-    onProfile: () -> Unit
+    onProfile: () -> Unit,
+    onKnotGuide: () -> Unit = {}
 ) {
     var selectedCategory by remember { mutableStateOf<Category?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -138,15 +139,27 @@ fun HomeScreen(
                             fontSize = 11.sp
                         )
                         Spacer(Modifier.height(10.dp))
-                        FilledTonalButton(
-                            onClick = onPrinciples,
-                            colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = FarshGold,
-                                contentColor = FarshInk
-                            ),
-                            shape = RoundedCornerShape(8.dp)
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("مرام‌نامه و ۱۴ اصل اصالت فرش", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            FilledTonalButton(
+                                onClick = onPrinciples,
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = FarshGold,
+                                    contentColor = FarshInk
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("۱۴ اصل اخلاقی", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            }
+                            OutlinedButton(
+                                onClick = onKnotGuide,
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = FarshGold)
+                            ) {
+                                Text("راهنمای رج‌شمار دستی", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            }
                         }
                     }
                 }

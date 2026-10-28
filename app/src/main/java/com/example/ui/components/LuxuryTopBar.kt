@@ -57,7 +57,6 @@ fun LuxuryTopBar(
     onSearchToggle: () -> Unit,
     onAddListingClick: () -> Unit,
     onMemorialClick: () -> Unit,
-    onRajCounterClick: () -> Unit,
     onStoryMakerClick: () -> Unit,
     onAccountClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -231,35 +230,6 @@ fun LuxuryTopBar(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Smart Raj Counter Tool Button
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(FarshCardSurface)
-                        .border(0.5.dp, FarshBorder, RoundedCornerShape(8.dp))
-                        .clickable { onRajCounterClick() }
-                        .padding(horizontal = 8.dp, vertical = 5.dp)
-                        .testTag("smart_raj_tool_button"),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Straighten,
-                            contentDescription = null,
-                            tint = FarshGoldWarm,
-                            modifier = Modifier.size(13.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "رج‌شمار هوشمند",
-                            fontFamily = VazirmatnFontFamily,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = FarshTextPrimary
-                        )
-                    }
-                }
 
                 // Free Story Maker Tool Button
                 Box(

@@ -28,6 +28,7 @@ object Routes {
     const val ABOUT = "about"
     const val PROFILE = "profile"
     const val SETTINGS = "settings"
+    const val KNOT_GUIDE = "rug-knot-guide"
     const val RUG_DETAIL = "rug/{rugId}"
     const val SELLER = "seller/{sellerId}"
     const val INSPECTION = "inspection/{rugId}"
@@ -57,7 +58,8 @@ fun AppNavGraph(app: FarshApp) {
                 onPrinciples = { nav.navigate(Routes.PRINCIPLES) },
                 onEducation = { nav.navigate(Routes.EDUCATION) },
                 onAbout = { nav.navigate(Routes.ABOUT) },
-                onProfile = { nav.navigate(Routes.PROFILE) }
+                onProfile = { nav.navigate(Routes.PROFILE) },
+                onKnotGuide = { nav.navigate(Routes.KNOT_GUIDE) }
             )
         }
 
@@ -116,8 +118,13 @@ fun AppNavGraph(app: FarshApp) {
                 onBack = { nav.popBackStack() },
                 onAbout = { nav.navigate(Routes.ABOUT) },
                 onPrinciples = { nav.navigate(Routes.PRINCIPLES) },
-                onEducation = { nav.navigate(Routes.EDUCATION) }
+                onEducation = { nav.navigate(Routes.EDUCATION) },
+                onKnotGuide = { nav.navigate(Routes.KNOT_GUIDE) }
             )
+        }
+
+        composable(Routes.KNOT_GUIDE) {
+            ir.farshbazaar.feature.knotguide.RugKnotGuideScreen(onBack = { nav.popBackStack() })
         }
 
         composable(
