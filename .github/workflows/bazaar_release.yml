@@ -35,26 +35,54 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-          cache: 'gradle'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
 
       - name: Validate Gradle Wrapper / Permissions
         run: |
-          chmod +x gradlew || true
+          chmod +x gradlew
 
-      # Step 1: Securely decode and write Release Keystore from GitHub Secrets
+      # Step 1: Ensure debug keystore exists (restore from base64 if needed)
+      - name: Configure Debug Keystore
+        run: |
+          if [ ! -f "debug.keystore" ]; then
+            if [ -f "debug.keystore.base64" ]; then
+              base64 -d debug.keystore.base64 > debug.keystore
+              echo "Debug keystore restored from base64."
+            else
+              keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+              echo "Debug keystore generated."
+            fi
+          fi
+
+      # Step 2: Configure Release Keystore from GitHub Secrets or local/fallback
       - name: Configure Release Keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.BAZAAR_RELEASE_KEYSTORE_BASE64 }}
+          STORE_PWD: ${{ secrets.BAZAAR_STORE_PASSWORD }}
+          KEY_PWD: ${{ secrets.BAZAAR_KEY_PASSWORD }}
         run: |
           if [ -n "$KEYSTORE_BASE64" ]; then
             echo "$KEYSTORE_BASE64" | base64 -d > "${{ github.workspace }}/my-upload-key.jks"
             echo "KEYSTORE_PATH=${{ github.workspace }}/my-upload-key.jks" >> $GITHUB_ENV
-            echo "Release keystore decoded successfully."
+            echo "STORE_PASSWORD=${STORE_PWD:-android}" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=${KEY_PWD:-android}" >> $GITHUB_ENV
+            echo "Release keystore decoded from GitHub Secrets."
+          elif [ -f "${{ github.workspace }}/my-upload-key.jks" ]; then
+            echo "KEYSTORE_PATH=${{ github.workspace }}/my-upload-key.jks" >> $GITHUB_ENV
+            echo "STORE_PASSWORD=${STORE_PWD:-android}" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=${KEY_PWD:-android}" >> $GITHUB_ENV
+            echo "Existing upload keystore found in workspace."
           else
-            echo "NOTICE: BAZAAR_RELEASE_KEYSTORE_BASE64 not set; checking for local keystore."
+            echo "NOTICE: BAZAAR_RELEASE_KEYSTORE_BASE64 not set; generating CI fallback upload keystore."
+            keytool -genkey -v -keystore "${{ github.workspace }}/my-upload-key.jks" -storepass android -alias upload -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Bazaar Release CI,O=FarshBazaar,C=IR"
+            echo "KEYSTORE_PATH=${{ github.workspace }}/my-upload-key.jks" >> $GITHUB_ENV
+            echo "STORE_PASSWORD=android" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=android" >> $GITHUB_ENV
           fi
 
-      # Step 2: Inject Safe Environment Secrets (.env)
+      # Step 3: Inject Safe Environment Secrets (.env)
       - name: Configure Secrets & Environment (.env)
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -62,7 +90,11 @@ jobs:
           SMS_GATEWAY_API_KEY: ${{ secrets.SMS_GATEWAY_API_KEY }}
           BAZAAR_PURCHASE_PUBLIC_KEY: ${{ secrets.BAZAAR_PURCHASE_PUBLIC_KEY }}
         run: |
-          echo "# Production Environment Secrets" > .env
+          if [ -f ".env.example" ]; then
+            cp .env.example .env
+          else
+            touch .env
+          fi
           if [ -n "$GEMINI_API_KEY" ]; then
             echo "GEMINI_API_KEY=$GEMINI_API_KEY" >> .env
           fi
@@ -75,43 +107,37 @@ jobs:
           if [ -n "$BAZAAR_PURCHASE_PUBLIC_KEY" ]; then
             echo "BAZAAR_PURCHASE_PUBLIC_KEY=$BAZAAR_PURCHASE_PUBLIC_KEY" >> .env
           fi
-          echo ".env prepared with injected secrets (file ignored by git)."
+          echo ".env prepared with injected secrets."
 
-      # Step 3: Run Full Unit & Critical User Journey Tests
+      # Step 4: Run Automated Unit Tests
       - name: Run Automated Test Suite
         run: |
-          gradle :app:testDebugUnitTest --no-daemon --stacktrace
+          ./gradlew :app:testDebugUnitTest --no-daemon --stacktrace
 
-      # Step 4: Build Signed Android App Bundle (AAB) for Cafe Bazaar
+      # Step 5: Build Signed Android App Bundle (AAB) for Cafe Bazaar
       - name: Build Release Bundle (AAB)
         if: ${{ github.event.inputs.build_type == 'both' || github.event.inputs.build_type == 'aab' || github.event_name == 'push' }}
-        env:
-          KEYSTORE_PATH: ${{ env.KEYSTORE_PATH }}
-          STORE_PASSWORD: ${{ secrets.BAZAAR_STORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.BAZAAR_KEY_PASSWORD }}
         run: |
-          gradle :app:bundleRelease --no-daemon --stacktrace
+          ./gradlew :app:bundleRelease --no-daemon --stacktrace
 
-      # Step 5: Build Signed Universal Release APK
+      # Step 6: Build Signed Universal Release APK
       - name: Build Release APK
         if: ${{ github.event.inputs.build_type == 'both' || github.event.inputs.build_type == 'apk' || github.event_name == 'push' }}
-        env:
-          KEYSTORE_PATH: ${{ env.KEYSTORE_PATH }}
-          STORE_PASSWORD: ${{ secrets.BAZAAR_STORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.BAZAAR_KEY_PASSWORD }}
         run: |
-          gradle :app:assembleRelease --no-daemon --stacktrace
+          ./gradlew :app:assembleRelease --no-daemon --stacktrace
 
-      # Step 6: Generate SHA-256 Checksums for Integrity
+      # Step 7: Generate SHA-256 Checksums for Integrity
       - name: Generate Checksums
         run: |
           mkdir -p release_outputs
           find app/build/outputs -type f \( -name "*.aab" -o -name "*.apk" \) -exec cp {} release_outputs/ \;
           cd release_outputs
-          sha256sum * > SHA256SUMS.txt
-          cat SHA256SUMS.txt
+          if ls *.aab *.apk 1> /dev/null 2>&1; then
+            sha256sum * > SHA256SUMS.txt
+            cat SHA256SUMS.txt
+          fi
 
-      # Step 7: Upload Artifacts to GitHub Actions
+      # Step 8: Upload Artifacts to GitHub Actions
       - name: Archive Production Release Artifacts
         uses: actions/upload-artifact@v4
         with:
