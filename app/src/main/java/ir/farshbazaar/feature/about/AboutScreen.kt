@@ -12,6 +12,20 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.PersonOutline
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import coil.compose.AsyncImage
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -27,6 +41,22 @@ import ir.farshbazaar.domain.Principles
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AboutScreen(onBack: () -> Unit) {
+    val context = LocalContext.current
+    var selectedFatherPhotoUri by remember {
+        val prefs = context.getSharedPreferences("farsh_memorial", android.content.Context.MODE_PRIVATE)
+        val saved = prefs.getString("father_photo_uri", null)
+        mutableStateOf(saved?.let { Uri.parse(it) })
+    }
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            selectedFatherPhotoUri = uri
+            val prefs = context.getSharedPreferences("farsh_memorial", android.content.Context.MODE_PRIVATE)
+            prefs.edit().putString("father_photo_uri", uri.toString()).apply()
+        }
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -114,17 +144,52 @@ fun AboutScreen(onBack: () -> Unit) {
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(52.dp)
-                                .clip(RoundedCornerShape(26.dp))
+                                .size(90.dp)
+                                .clip(RoundedCornerShape(45.dp))
                                 .background(FarshRed.copy(alpha = 0.3f))
-                                .border(1.dp, FarshGold, RoundedCornerShape(26.dp)),
+                                .border(2.dp, FarshGold, RoundedCornerShape(45.dp))
+                                .clickable {
+                                    photoPickerLauncher.launch(
+                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                    )
+                                },
                             contentAlignment = Alignment.Center
                         ) {
+                            if (selectedFatherPhotoUri != null) {
+                                AsyncImage(
+                                    model = selectedFatherPhotoUri,
+                                    contentDescription = "تصویر مرحوم حاج حسین آقای علی‌میری",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Favorite,
+                                    contentDescription = null,
+                                    tint = FarshGold,
+                                    modifier = Modifier.size(36.dp)
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        TextButton(
+                            onClick = {
+                                photoPickerLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            }
+                        ) {
                             Icon(
-                                imageVector = Icons.Default.Favorite,
+                                imageVector = Icons.Default.AddPhotoAlternate,
                                 contentDescription = null,
                                 tint = FarshGold,
-                                modifier = Modifier.size(26.dp)
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = if (selectedFatherPhotoUri != null) "تغییر تصویر یادبود پدر" else "انتخاب و بارگذاری تصویر یادبود پدر از گالری",
+                                color = FarshGold,
+                                fontSize = 11.sp
                             )
                         }
                         Spacer(Modifier.height(12.dp))
