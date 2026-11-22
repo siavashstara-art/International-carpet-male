@@ -23,6 +23,10 @@ jobs:
   test_and_build:
     name: Verify Tests & Build Cafe Bazaar Artifacts
     runs-on: ubuntu-latest
+    env:
+      KEYSTORE_PATH: ${{ github.workspace }}/my-upload-key.jks
+      STORE_PASSWORD: ${{ secrets.BAZAAR_STORE_PASSWORD != '' && secrets.BAZAAR_STORE_PASSWORD || 'android' }}
+      KEY_PASSWORD: ${{ secrets.BAZAAR_KEY_PASSWORD != '' && secrets.BAZAAR_KEY_PASSWORD || 'android' }}
 
     steps:
       - name: Checkout Source Code
@@ -63,24 +67,23 @@ jobs:
           STORE_PWD: ${{ secrets.BAZAAR_STORE_PASSWORD }}
           KEY_PWD: ${{ secrets.BAZAAR_KEY_PASSWORD }}
         run: |
+          KEYSTORE_FILE="${{ github.workspace }}/my-upload-key.jks"
           if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "$KEYSTORE_BASE64" | base64 -d > "${{ github.workspace }}/my-upload-key.jks"
-            echo "KEYSTORE_PATH=${{ github.workspace }}/my-upload-key.jks" >> $GITHUB_ENV
-            echo "STORE_PASSWORD=${STORE_PWD:-android}" >> $GITHUB_ENV
-            echo "KEY_PASSWORD=${KEY_PWD:-android}" >> $GITHUB_ENV
+            echo "$KEYSTORE_BASE64" | base64 -d > "$KEYSTORE_FILE"
             echo "Release keystore decoded from GitHub Secrets."
-          elif [ -f "${{ github.workspace }}/my-upload-key.jks" ]; then
-            echo "KEYSTORE_PATH=${{ github.workspace }}/my-upload-key.jks" >> $GITHUB_ENV
-            echo "STORE_PASSWORD=${STORE_PWD:-android}" >> $GITHUB_ENV
-            echo "KEY_PASSWORD=${KEY_PWD:-android}" >> $GITHUB_ENV
-            echo "Existing upload keystore found in workspace."
+          elif [ ! -f "$KEYSTORE_FILE" ]; then
+            echo "NOTICE: my-upload-key.jks not found; generating new upload keystore for CI release."
+            keytool -genkey -v -keystore "$KEYSTORE_FILE" -storepass android -alias upload -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Bazaar Release CI,O=FarshBazaar,C=IR"
           else
-            echo "NOTICE: BAZAAR_RELEASE_KEYSTORE_BASE64 not set; generating CI fallback upload keystore."
-            keytool -genkey -v -keystore "${{ github.workspace }}/my-upload-key.jks" -storepass android -alias upload -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Bazaar Release CI,O=FarshBazaar,C=IR"
-            echo "KEYSTORE_PATH=${{ github.workspace }}/my-upload-key.jks" >> $GITHUB_ENV
-            echo "STORE_PASSWORD=android" >> $GITHUB_ENV
-            echo "KEY_PASSWORD=android" >> $GITHUB_ENV
+            echo "Using existing my-upload-key.jks from repository workspace."
           fi
+
+          FINAL_STORE_PWD="${STORE_PWD:-android}"
+          FINAL_KEY_PWD="${KEY_PWD:-android}"
+
+          echo "KEYSTORE_PATH=$KEYSTORE_FILE" >> $GITHUB_ENV
+          echo "STORE_PASSWORD=$FINAL_STORE_PWD" >> $GITHUB_ENV
+          echo "KEY_PASSWORD=$FINAL_KEY_PWD" >> $GITHUB_ENV
 
       # Step 3: Inject Safe Environment Secrets (.env)
       - name: Configure Secrets & Environment (.env)
@@ -95,36 +98,46 @@ jobs:
           else
             touch .env
           fi
-          if [ -n "$GEMINI_API_KEY" ]; then
-            echo "GEMINI_API_KEY=$GEMINI_API_KEY" >> .env
-          fi
-          if [ -n "$SHAHKAR_API_KEY" ]; then
-            echo "SHAHKAR_API_KEY=$SHAHKAR_API_KEY" >> .env
-          fi
-          if [ -n "$SMS_GATEWAY_API_KEY" ]; then
-            echo "SMS_GATEWAY_API_KEY=$SMS_GATEWAY_API_KEY" >> .env
-          fi
-          if [ -n "$BAZAAR_PURCHASE_PUBLIC_KEY" ]; then
-            echo "BAZAAR_PURCHASE_PUBLIC_KEY=$BAZAAR_PURCHASE_PUBLIC_KEY" >> .env
-          fi
+          [ -n "$GEMINI_API_KEY" ] && echo "GEMINI_API_KEY=$GEMINI_API_KEY" >> .env
+          [ -n "$SHAHKAR_API_KEY" ] && echo "SHAHKAR_API_KEY=$SHAHKAR_API_KEY" >> .env
+          [ -n "$SMS_GATEWAY_API_KEY" ] && echo "SMS_GATEWAY_API_KEY=$SMS_GATEWAY_API_KEY" >> .env
+          [ -n "$BAZAAR_PURCHASE_PUBLIC_KEY" ] && echo "BAZAAR_PURCHASE_PUBLIC_KEY=$BAZAAR_PURCHASE_PUBLIC_KEY" >> .env
           echo ".env prepared with injected secrets."
 
       # Step 4: Run Automated Unit Tests
       - name: Run Automated Test Suite
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/my-upload-key.jks
+          STORE_PASSWORD: ${{ secrets.BAZAAR_STORE_PASSWORD != '' && secrets.BAZAAR_STORE_PASSWORD || 'android' }}
+          KEY_PASSWORD: ${{ secrets.BAZAAR_KEY_PASSWORD != '' && secrets.BAZAAR_KEY_PASSWORD || 'android' }}
         run: |
-          ./gradlew :app:testDebugUnitTest --no-daemon --stacktrace
+          ./gradlew :app:testDebugUnitTest --no-daemon --no-configuration-cache --stacktrace
 
       # Step 5: Build Signed Android App Bundle (AAB) for Cafe Bazaar
       - name: Build Release Bundle (AAB)
         if: ${{ github.event.inputs.build_type == 'both' || github.event.inputs.build_type == 'aab' || github.event_name == 'push' }}
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/my-upload-key.jks
+          STORE_PASSWORD: ${{ secrets.BAZAAR_STORE_PASSWORD != '' && secrets.BAZAAR_STORE_PASSWORD || 'android' }}
+          KEY_PASSWORD: ${{ secrets.BAZAAR_KEY_PASSWORD != '' && secrets.BAZAAR_KEY_PASSWORD || 'android' }}
         run: |
-          ./gradlew :app:bundleRelease --no-daemon --stacktrace
+          STORE_PASSWORD="${STORE_PASSWORD:-android}" \
+          KEY_PASSWORD="${KEY_PASSWORD:-android}" \
+          KEYSTORE_PATH="${KEYSTORE_PATH:-${GITHUB_WORKSPACE}/my-upload-key.jks}" \
+          ./gradlew :app:bundleRelease --no-daemon --no-configuration-cache --stacktrace
 
       # Step 6: Build Signed Universal Release APK
       - name: Build Release APK
         if: ${{ github.event.inputs.build_type == 'both' || github.event.inputs.build_type == 'apk' || github.event_name == 'push' }}
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/my-upload-key.jks
+          STORE_PASSWORD: ${{ secrets.BAZAAR_STORE_PASSWORD != '' && secrets.BAZAAR_STORE_PASSWORD || 'android' }}
+          KEY_PASSWORD: ${{ secrets.BAZAAR_KEY_PASSWORD != '' && secrets.BAZAAR_KEY_PASSWORD || 'android' }}
         run: |
-          ./gradlew :app:assembleRelease --no-daemon --stacktrace
+          STORE_PASSWORD="${STORE_PASSWORD:-android}" \
+          KEY_PASSWORD="${KEY_PASSWORD:-android}" \
+          KEYSTORE_PATH="${KEYSTORE_PATH:-${GITHUB_WORKSPACE}/my-upload-key.jks}" \
+          ./gradlew :app:assembleRelease --no-daemon --no-configuration-cache --stacktrace
 
       # Step 7: Generate SHA-256 Checksums for Integrity
       - name: Generate Checksums
